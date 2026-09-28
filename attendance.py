@@ -138,7 +138,18 @@ elif choice == "✅ บันทึกการเข้างาน/ลา":
         t_out = c2.time_input("เวลาออก", value=datetime.strptime("17:00", "%H:%M").time())
         time_in = t_in.strftime("%H:%M")
         time_out = t_out.strftime("%H:%M")
-
+        
+    # --- เพิ่มส่วนแนบรูป ---
+    st.subheader("แนบรูปภาพ")
+    pic_in = st.file_uploader("แนบรูปเช็คอิน", type=["jpg", "jpeg", "png"])
+    pic_out = st.file_uploader("แนบรูปเช็คเอาท์", type=["jpg", "jpeg", "png"])
+    
+    if pic_in is not None:
+        st.image(pic_in, caption="รูปเช็คอิน", width=200)
+    if pic_out is not None:
+        st.image(pic_out, caption="รูปเช็คเอาท์", width=200)
+    # --- จบส่วนแนบรูป ---
+        
         # คำนวณมาสาย
         ref_in = datetime.strptime("08:00", "%H:%M")
         act_in = datetime.strptime(time_in, "%H:%M")
