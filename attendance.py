@@ -36,12 +36,13 @@ def img_cell(val):
     return "-"
 
 # ==========================================
-# 1. จัดการรายชื่อพนักงาน
+# 1. จัดการรายชื่อพนักงาน — มีแก้ไข + ลบ ✅
 # ==========================================
 if menu == "จัดการรายชื่อพนักงาน":
     st.header("จัดการรายชื่อพนักงาน")
     df_emp = pd.read_csv(EMP_FILE)
 
+    # === ฟอร์มเพิ่มพนักงาน ===
     c1, c2, c3, c4 = st.columns(4)
     with c1: eid = st.text_input("รหัสพนักงาน")
     with c2: enam = st.text_input("ชื่อพนักงาน")
@@ -64,12 +65,68 @@ if menu == "จัดการรายชื่อพนักงาน":
         else:
             st.warning("มีรหัสนี้อยู่แล้ว ⚠️")
 
+    # === รายชื่อพร้อมปุ่มแก้ไข / ลบ ===
     st.subheader("รายชื่อทั้งหมด")
-    if not df_emp.empty:
-        st.dataframe(df_emp, use_container_width=True)
-    else:
+    if df_emp.empty:
         st.info("ยังไม่มีข้อมูล")
+    else:
+        # เก็บสถานะแก้ไข
+        if "edit_idx" not in st.session_state:
+            st.session_state.edit_idx = None
 
+        for idx, row in df_emp.iterrows():
+            eid_row = row["รหัสพนักงาน"]
+            name_row = row["ชื่อพนักงาน"]
+            nick_row = row["ชื่อเล่น"]
+            pos_row = row["ตำแหน่ง"]
+
+            if st.session_state.edit_idx == idx:
+                # === โหมดแก้ไข ===
+                with st.form(f"edit_form_{idx}"):
+                    ceid = st.text_input("รหัสพนักงาน", value=eid_row, disabled=True)
+                    cnam = st.text_input("ชื่อพนักงาน", value=name_row)
+                    cnick = st.text_input("ชื่อเล่น", value=nick_row)
+                    cpos = st.text_input("ตำแหน่ง", value=pos_row)
+                    sv, cl = st.columns(2)
+                    with sv:
+                        if st.form_submit_button("💾 บันทึก"):
+                            df_emp.at[idx, "ชื่อพนักงาน"] = cnam
+                            df_emp.at[idx, "ชื่อเล่น"] = cnick
+                            df_emp.at[idx, "ตำแหน่ง"] = cpos
+                            df_emp.to_csv(EMP_FILE, index=False)
+                            st.session_state.edit_idx = None
+                            st.rerun()
+                    with cl:
+                        if st.form_submit_button("❌ ยกเลิก"):
+                            st.session_state.edit_idx = None
+                            st.rerun()
+            else:
+                # === แสดงปกติ + ปุ่ม ===
+                c1, c2, c3, c4, c5, c6 = st.columns([2, 3, 2, 2, 1.2, 1.2])
+                c1.write(eid_row)
+                c2.write(name_row)
+                c3.write(nick_row)
+                c4.write(pos_row)
+                if c5.button("✏️ แก้ไข", key=f"edit_btn_{idx}"):
+                    st.session_state.edit_idx = idx
+                    st.rerun()
+                if c6.button("🗑️ ลบ", key=f"del_btn_{idx}"):
+                    st.session_state[f"confirm_del_{idx}"] = True
+
+                # === ยืนยันการลบ ===
+                if f"confirm_del_{idx}" in st.session_state and st.session_state[f"confirm_del_{idx}"]:
+                    st.warning(f"ต้องการลบ {name_row} ใช่หรือไม่?")
+                    y, n = st.columns(2)
+                    if y.button("✅ ยืนยันลบ", key=f"del_ok_{idx}"):
+                        df_emp = df_emp.drop(idx).reset_index(drop=True)
+                        df_emp.to_csv(EMP_FILE, index=False)
+                        del st.session_state[f"confirm_del_{idx}"]
+                        st.success("ลบสำเร็จ ✅")
+                        st.rerun()
+                    if n.button("❌ ยกเลิก", key=f"del_no_{idx}"):
+                        del st.session_state[f"confirm_del_{idx}"]
+                        st.rerun()
+                        
 # ==========================================
 # 2. บันทึกการเข้างาน/ลา
 # ==========================================
