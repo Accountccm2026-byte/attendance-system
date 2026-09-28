@@ -44,7 +44,16 @@ if menu == "จัดการรายชื่อพนักงาน":
     if st.button("เพิ่มพนักงาน"):
         df_emp = pd.read_csv(EMP_FILE)
         if emp_id and emp_name:
-            if emp_id not in df_emp["รหัสพนักงาน"].astype(str).values:
+            # หาคอลัมน์ที่เก็บรหัสพนักงาน
+emp_id_col = None
+for col in df_emp.columns:
+    if "รหัส" in col:
+        emp_id_col = col
+        break
+if emp_id_col is None:
+    emp_id_col = df_emp.columns[0]
+
+if emp_id not in df_emp[emp_id_col].astype(str).values:
                 new_row = pd.DataFrame([[emp_id, emp_name, emp_nick, emp_pos]],
                                       columns=["รหัสพนักงาน", "ชื่อพนักงาน", "ชื่อเล่น", "ตำแหน่ง"])
                 df_emp = pd.concat([df_emp, new_row], ignore_index=True)
