@@ -1,1 +1,1 @@
-emp_id,date,status,time_in,time_out,late_min,late_hr,normal_hr,ot15,ot1,leave_hrs,leave_type,note
+รหัสพนักงาน,ชื่อพนักงาน,วันที่,สถานะ,เวลาเข้า,เวลาออก,จำนวนชั่วโมง,หมายเหตุ,รูปเช็คอิน,รูปเช็คเอาท์
