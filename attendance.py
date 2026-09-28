@@ -3,15 +3,12 @@ import pandas as pd
 from datetime import datetime
 import os
 
-# --- การตั้งค่าหน้าเว็บ ---
 st.set_page_config(page_title="ระบบบันทึกเวลาทำงาน", layout="wide")
-st.title("📋 ระบบบันทึกเวลาทำงาน - รอบ 26/09/69 - 25/10/69")
+st.title("📋 ระบบบันทึกเวลาทำงาน")
 
-# --- ชื่อไฟล์ข้อมูล ---
 EMP_FILE = "employees.csv"
 REC_FILE = "records.csv"
 
-# --- สร้างไฟล์ถ้ายังไม่มี ---
 if not os.path.exists(EMP_FILE):
     pd.DataFrame(columns=["รหัสพนักงาน", "ชื่อพนักงาน", "ชื่อเล่น", "ตำแหน่ง"]).to_csv(EMP_FILE, index=False)
 if not os.path.exists(REC_FILE):
@@ -21,7 +18,6 @@ if not os.path.exists(REC_FILE):
         "รูปเช็คอิน", "รูปเช็คเอาท์"
     ]).to_csv(REC_FILE, index=False)
 
-# --- เมนูหลัก ---
 menu = st.sidebar.selectbox("เมนูหลัก", [
     "จัดการรายชื่อพนักงาน",
     "บันทึกการเข้างาน/ลา",
@@ -29,11 +25,9 @@ menu = st.sidebar.selectbox("เมนูหลัก", [
     "หน้าสรุปส่ง HR"
 ])
 
-# ==========================================
-# 1. จัดการรายชื่อพนักงาน
-# ==========================================
 if menu == "จัดการรายชื่อพนักงาน":
     st.header("จัดการรายชื่อพนักงาน")
+    df_emp = pd.read_csv(EMP_FILE)
     
     col1, col2, col3, col4 = st.columns(4)
     with col1: emp_id = st.text_input("รหัสพนักงาน")
@@ -42,18 +36,14 @@ if menu == "จัดการรายชื่อพนักงาน":
     with col4: emp_pos = st.text_input("ตำแหน่ง")
     
     if st.button("เพิ่มพนักงาน"):
-        df_emp = pd.read_csv(EMP_FILE)
         if emp_id and emp_name:
-            # หาคอลัมน์ที่เก็บรหัสพนักงาน
-emp_id_col = None
-for col in df_emp.columns:
-    if "รหัส" in col:
-        emp_id_col = col
-        break
-if emp_id_col is None:
-    emp_id_col = df_emp.columns[0]
-
-if emp_id not in df_emp[emp_id_col].astype(str).values:
+            # เช็ครหัสซ้ำ ปลอดภัยแน่นอน
+            if "รหัสพนักงาน" in df_emp.columns:
+                exists = emp_id in df_emp["รหัสพนักงาน"].astype(str).values
+            else:
+                exists = emp_id in df_emp.iloc[:, 0].astype(str).values
+            
+            if not exists:
                 new_row = pd.DataFrame([[emp_id, emp_name, emp_nick, emp_pos]],
                                       columns=["รหัสพนักงาน", "ชื่อพนักงาน", "ชื่อเล่น", "ตำแหน่ง"])
                 df_emp = pd.concat([df_emp, new_row], ignore_index=True)
@@ -66,18 +56,13 @@ if emp_id not in df_emp[emp_id_col].astype(str).values:
             st.error("กรุณากรอกรหัสและชื่อ")
     
     st.subheader("รายชื่อทั้งหมด")
-    df_emp = pd.read_csv(EMP_FILE)
     if not df_emp.empty:
         st.dataframe(df_emp, use_container_width=True)
     else:
         st.info("ยังไม่มีข้อมูลพนักงาน")
 
-# ==========================================
-# 2. บันทึกการเข้างาน/ลา
-# ==========================================
 elif menu == "บันทึกการเข้างาน/ลา":
     st.header("บันทึกการเข้างาน/ลา")
-    
     df_emp = pd.read_csv(EMP_FILE)
     if df_emp.empty:
         st.warning("กรุณาเพิ่มรายชื่อพนักงานก่อน ⚠️")
@@ -107,7 +92,6 @@ elif menu == "บันทึกการเข้างาน/ลา":
             t_out = st.time_input("เวลาออก", value=datetime.strptime("17:00", "%H:%M").time())
             time_out = t_out.strftime("%H:%M")
         
-        # ✅ ส่วนแนบรูปภาพ
         st.subheader("แนบรูปภาพ")
         pic_in_file = st.file_uploader("แนบรูปเช็คอิน", type=["jpg", "jpeg", "png"])
         pic_out_file = st.file_uploader("แนบรูปเช็คเอาท์", type=["jpg", "jpeg", "png"])
@@ -121,19 +105,15 @@ elif menu == "บันทึกการเข้างาน/ลา":
     
     if st.button("บันทึกข้อมูล", type="primary"):
         df_rec = pd.read_csv(REC_FILE)
-        
-        # คำนวณชั่วโมง
         hours = ""
         if time_in and time_out:
             try:
                 t1 = datetime.strptime(time_in, "%H:%M")
                 t2 = datetime.strptime(time_out, "%H:%M")
-                diff = (t2 - t1).seconds / 3600
-                hours = f"{diff:.1f}"
+                hours = f"{(t2-t1).seconds/3600:.1f}"
             except:
                 hours = "-"
         
-        # บันทึกชื่อไฟล์รูป (ถ้ามี)
         pic_in_name = pic_in_file.name if pic_in_file else ""
         pic_out_name = pic_out_file.name if pic_out_file else ""
         
@@ -152,9 +132,6 @@ elif menu == "บันทึกการเข้างาน/ลา":
         st.success("บันทึกสำเร็จ ✅")
         st.balloons()
 
-# ==========================================
-# 3. ดูสรุปทั้งหมด
-# ==========================================
 elif menu == "ดูสรุปทั้งหมด":
     st.header("สรุปการทำงานทั้งหมด")
     df_rec = pd.read_csv(REC_FILE)
@@ -164,12 +141,8 @@ elif menu == "ดูสรุปทั้งหมด":
     else:
         st.info("ยังไม่มีข้อมูล")
 
-# ==========================================
-# 4. หน้าสรุปส่ง HR
-# ==========================================
 elif menu == "หน้าสรุปส่ง HR":
     st.header("หน้าสรุปส่ง HR")
-    
     col_d1, col_d2 = st.columns(2)
     with col_d1:
         start_d = st.date_input("วันที่เริ่มต้น", datetime(2026, 9, 26))
