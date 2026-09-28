@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 import base64
 
@@ -10,7 +10,7 @@ st.title("📋 ระบบบันทึกเวลาทำงาน")
 EMP_FILE = "employees.csv"
 REC_FILE = "records.csv"
 
-# สร้างไฟล์เฉพาะเมื่อไม่มีหรือว่าง
+# สร้างไฟล์เฉพาะเมื่อไม่มีหรือว่าง — ป้องกันข้อมูลหาย
 if not os.path.exists(EMP_FILE) or os.path.getsize(EMP_FILE) == 0:
     pd.DataFrame(columns=["รหัสพนักงาน", "ชื่อพนักงาน", "ชื่อเล่น", "ตำแหน่ง"]).to_csv(EMP_FILE, index=False)
 if not os.path.exists(REC_FILE) or os.path.getsize(REC_FILE) == 0:
@@ -36,21 +36,17 @@ def img_cell(val):
     return "-"
 
 # ==========================================
-# 1. จัดการรายชื่อพนักงาน — แก้ไขแล้ว
+# 1. จัดการรายชื่อพนักงาน
 # ==========================================
 if menu == "จัดการรายชื่อพนักงาน":
     st.header("จัดการรายชื่อพนักงาน")
     df_emp = pd.read_csv(EMP_FILE)
 
     c1, c2, c3, c4 = st.columns(4)
-    with c1:
-        eid = st.text_input("รหัสพนักงาน")
-    with c2:
-        enam = st.text_input("ชื่อพนักงาน")
-    with c3:
-        enick = st.text_input("ชื่อเล่น")
-    with c4:
-        epos = st.text_input("ตำแหน่ง")
+    with c1: eid = st.text_input("รหัสพนักงาน")
+    with c2: enam = st.text_input("ชื่อพนักงาน")
+    with c3: enick = st.text_input("ชื่อเล่น")
+    with c4: epos = st.text_input("ตำแหน่ง")
 
     if st.button("เพิ่มพนักงาน") and eid and enam:
         if "รหัสพนักงาน" in df_emp.columns:
@@ -170,7 +166,7 @@ elif menu == "หน้าสรุปภาพรวม":
     st.dataframe(summary, use_container_width=True)
 
 # ==========================================
-# 4. รายงานรายชื่อ+วันทำงาน
+# 4. รายงานรายชื่อ+วันทำงาน — มีรูปเช็คอิน/เช็คเอาท์
 # ==========================================
 elif menu == "รายงานรายชื่อ+วันทำงาน":
     st.header("รายงานรายชื่อ+วันทำงาน")
@@ -205,7 +201,7 @@ elif menu == "รายงานรายชื่อ+วันทำงาน":
     )[["มาปกติ(วัน)","ลาป่วย(วัน)","WOP(วัน)","ลากิจไม่รับเงิน(ชม.)","ขาดงาน(วัน)"]].sum().reset_index()
     st.dataframe(sum_df, use_container_width=True)
 
-    # รายละเอียดรายวัน
+    # รายละเอียดรายวัน — มีรูปเช็คอิน/เช็คเอาท์ ✅
     st.subheader("รายละเอียดรายวัน")
     day_df = df.copy()
     day_df["วันที่"] = day_df["วันที่"].dt.strftime("%d/%m/%y")
@@ -214,26 +210,38 @@ elif menu == "รายงานรายชื่อ+วันทำงาน":
     day_df["OT 1(ชม.)"] = 0
     day_df["สถานะ"] = day_df["สถานะ"].apply(lambda x: f"✅ {x}" if x == "มาปกติ" else x)
     
-    day_cols = ["วันที่", "รหัสพนักงาน", "ชื่อพนักงาน", "ชื่อเล่น", "ตำแหน่ง",
-                "สถานะ", "เวลาเข้า", "เวลาออก", "ชม.ปกติ", "OT 1.5(ชม.)", "OT 1(ชม.)"]
-    st.dataframe(day_df[day_cols], use_container_width=True)
+    day_df["รูปเช็คอิน"] = day_df["รูปเช็คอิน"].apply(img_cell)
+    day_df["รูปเช็คเอาท์"] = day_df["รูปเช็คเอาท์"].apply(img_cell)
+    
+    day_cols = [
+        "วันที่", "รหัสพนักงาน", "ชื่อพนักงาน", "ชื่อเล่น", "ตำแหน่ง",
+        "สถานะ", "เวลาเข้า", "เวลาออก", "ชม.ปกติ", "OT 1.5(ชม.)", "OT 1(ชม.)",
+        "รูปเช็คอิน", "รูปเช็คเอาท์"
+    ]
+    
+    st.write(day_df[day_cols].to_html(escape=False, index=False), unsafe_allow_html=True)
 
     # ดาวน์โหลด Excel
+    day_xl = day_df[day_cols].copy()
+    day_xl["รูปเช็คอิน"] = day_xl["รูปเช็คอิน"].apply(lambda x: "มีรูป" if str(x).startswith("<img") else "-")
+    day_xl["รูปเช็คเอาท์"] = day_xl["รูปเช็คเอาท์"].apply(lambda x: "มีรูป" if str(x).startswith("<img") else "-")
+    
     out_file = f"รายงาน_{start_d.strftime('%Y%m%d')}_{end_d.strftime('%Y%m%d')}.xlsx"
     with pd.ExcelWriter(out_file, engine="openpyxl") as w:
         sum_df.to_excel(w, sheet_name="สรุปรวม", index=False)
-        day_df[day_cols].to_excel(w, sheet_name="รายละเอียด", index=False)
+        day_xl.to_excel(w, sheet_name="รายละเอียด", index=False)
     with open(out_file, "rb") as f:
         st.download_button("📥 ดาวน์โหลดรายงาน Excel", f, out_file)
 
 # ==========================================
-# 5. หน้าสรุปส่ง HR
+# 5. หน้าสรุปส่ง HR — ตรงรูปแบบเป๊ะๆ ✅
 # ==========================================
 elif menu == "หน้าสรุปส่ง HR":
     st.header("หน้าสรุปส่ง HR")
     c1, c2 = st.columns(2)
-    start_d = c1.date_input("วันที่เริ่ม", datetime(2026, 9, 26))
+    start_d = c1.date_input("วันที่เริ่มต้น", datetime(2026, 9, 26))
     end_d = c2.date_input("วันที่สิ้นสุด", datetime(2026, 10, 25))
+    st.subheader(f"รอบ {start_d.strftime('%d/%m/%y')} - {end_d.strftime('%d/%m/%y')}")
 
     df_rec = pd.read_csv(REC_FILE)
     if df_rec.empty:
@@ -248,23 +256,47 @@ elif menu == "หน้าสรุปส่ง HR":
         st.info("ไม่มีข้อมูลในช่วงนี้")
         st.stop()
 
-    st.subheader(f"ข้อมูลช่วง {start_d.strftime('%Y/%m/%d')} - {end_d.strftime('%Y/%m/%d')}")
+    # เตรียมข้อมูล
+    df["วันที่_str"] = df["วันที่"].dt.strftime("%d/%m/%y")
+    df["ค่า"] = df["สถานะ"].apply(lambda x: 1 if x == "มาปกติ" else "")
     
-    df["รูปเช็คอิน"] = df["รูปเช็คอิน"].apply(img_cell)
-    df["รูปเช็คเอาท์"] = df["รูปเช็คเอาท์"].apply(img_cell)
-    st.write(df.to_html(escape=False, index=False), unsafe_allow_html=True)
+    # สร้าง Pivot: พนักงาน x วันที่
+    pivot = df.pivot_table(
+        index=["รหัสพนักงาน", "ชื่อพนักงาน", "ชื่อเล่น", "ตำแหน่ง"],
+        columns="วันที่_str",
+        values="ค่า",
+        aggfunc="first",
+        fill_value=""
+    ).reset_index()
 
-    # สำหรับ Excel
-    df_xl = df.copy()
-    df_xl["รูปเช็คอิน"] = df_xl["รูปเช็คอิน"].apply(lambda x: "มีรูป" if str(x).startswith("<img") else "-")
-    df_xl["รูปเช็คเอาท์"] = df_xl["รูปเช็คเอาท์"].apply(lambda x: "มีรูป" if str(x).startswith("<img") else "-")
-    
+    # คำนวณสรุปต่อท้าย
+    emp_summary = df.groupby(
+        ["รหัสพนักงาน", "ชื่อพนักงาน", "ชื่อเล่น", "ตำแหน่ง"], dropna=False
+    ).apply(lambda g: pd.Series({
+        "มาปกติ(วัน)": (g["สถานะ"] == "มาปกติ").sum(),
+        "ลาป่วย(วัน)": (g["สถานะ"] == "ลาป่วย").sum(),
+        "WOP(วัน)": 0,
+        "ลากิจไม่รับเงิน(ชม.)": 0,
+        "ขาดงาน(วัน)": (g["สถานะ"] == "ขาดงาน").sum(),
+        "OT 1.5(ชม.)": 0,
+        "OT 1(ชม.)": 0,
+        "มาสายรวม(ชม.)": 0,
+        "มาสายรวม(นาที)": 0
+    })).reset_index()
+
+    # รวมคอลัมน์วันที่ + สรุป ติดกันเป็นแถวเดียว ✅
+    final_df = pd.merge(pivot, emp_summary,
+                        on=["รหัสพนักงาน", "ชื่อพนักงาน", "ชื่อเล่น", "ตำแหน่ง"])
+
+    # แสดงผล
+    st.dataframe(final_df, use_container_width=True)
+
+    # ดาวน์โหลด Excel
     fn = f"สรุปส่งHR_{start_d.strftime('%Y%m%d')}_{end_d.strftime('%Y%m%d')}.xlsx"
     with pd.ExcelWriter(fn, engine="openpyxl") as w:
-        df_xl.to_excel(w, index=False, sheet_name="สรุป")
+        final_df.to_excel(w, index=False, sheet_name="สรุปส่งHR")
     with open(fn, "rb") as f:
         st.download_button("📥 ดาวน์โหลดไฟล์ Excel", f, fn)
-    st.info("💡 ดูรูปจริงได้ในหน้าเว็บระบบครับ")
 
 # ==========================================
 # 6. สำรองข้อมูล
