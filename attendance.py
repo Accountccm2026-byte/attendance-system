@@ -198,10 +198,10 @@ elif menu == "บันทึกการเข้างาน/ลา":
             if st.button("✅ บันทึกเวลาเข้า", type="primary"):
                 lmin, lhr, ot15, ot1, wh = calc_times(tin_new, tout, dt)
                 if existing.empty:
-                    new_rec = pd.DataFrame([[
-                        eid, enam, enick, epos, dt, stt, tin_new, tout,
-                        wh if tout else "-", "-", pin_new, pout, lmin, lhr, ot15, ot1
-                    ]], columns=df_rec.columns)
+                new_rec = pd.DataFrame([[
+                    eid, enam, enick, epos, dt, stt, tin_new, tout,
+                    wh if tout else "-", "-", pin_new, pout, lmin, lhr, ot15, ot1
+                ]], columns=df_rec.columns)
                     df_rec = pd.concat([df_rec, new_rec], ignore_index=True)
                 else:
                     idx = existing.index[0]
