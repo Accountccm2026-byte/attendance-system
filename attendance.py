@@ -10,7 +10,6 @@ st.title("📋 ระบบบันทึกเวลาทำงาน")
 EMP_FILE = "employees.csv"
 REC_FILE = "records.csv"
 
-# สร้างไฟล์ถ้ายังไม่มี
 if not os.path.exists(EMP_FILE) or os.path.getsize(EMP_FILE) == 0:
     pd.DataFrame(columns=["รหัสพนักงาน", "ชื่อพนักงาน", "ชื่อเล่น", "ตำแหน่ง"]).to_csv(EMP_FILE, index=False, encoding="utf-8")
 if not os.path.exists(REC_FILE) or os.path.getsize(REC_FILE) == 0:
@@ -195,27 +194,27 @@ elif menu == "บันทึกการเข้างาน/ลา":
             st.write("แนบรูปเช็คอิน")
             fin = st.file_uploader("อัปโหลดรูปเช็คอิน", type=["jpg", "jpeg", "png"], key="pin_upload")
             pin_new = f"data:image/jpeg;base64,{base64.b64encode(fin.read()).decode()}" if fin else pin
-           if st.button("✅ บันทึกเวลาเข้า", type="primary"):
-    lmin, lhr, ot15, ot1, wh = calc_times(tin_new, tout, dt)
-    if existing.empty:
-        new_rec = pd.DataFrame([[
-            eid, enam, enick, epos, dt, stt, tin_new, tout,
-            wh if tout else "-", "-", pin_new, pout, lmin, lhr, ot15, ot1
-        ]], columns=df_rec.columns)
-        df_rec = pd.concat([df_rec, new_rec], ignore_index=True)
-    else:
-        idx = existing.index[0]
-        df_rec.at[idx, "เวลาเข้า"] = tin_new
-        df_rec.at[idx, "รูปเช็คอิน"] = pin_new
-        if tout:
-            df_rec.at[idx, "จำนวนชั่วโมง"] = wh
-            df_rec.at[idx, "สายนาที"] = lmin
-            df_rec.at[idx, "สายชม"] = lhr
-            df_rec.at[idx, "OT 1.5(ชม.)"] = ot15
-            df_rec.at[idx, "OT 1(ชม.)"] = ot1
-    df_rec.to_csv(REC_FILE, index=False, encoding="utf-8")
-    st.success("บันทึกเวลาเข้าสำเร็จ ✅")
-    st.rerun()
+            if st.button("✅ บันทึกเวลาเข้า", type="primary"):
+                lmin, lhr, ot15, ot1, wh = calc_times(tin_new, tout, dt)
+                if existing.empty:
+                    new_rec = pd.DataFrame([[
+                        eid, enam, enick, epos, dt, stt, tin_new, tout,
+                        wh if tout else "-", "-", pin_new, pout, lmin, lhr, ot15, ot1
+                    ]], columns=df_rec.columns)
+                    df_rec = pd.concat([df_rec, new_rec], ignore_index=True)
+                else:
+                    idx = existing.index[0]
+                    df_rec.at[idx, "เวลาเข้า"] = tin_new
+                    df_rec.at[idx, "รูปเช็คอิน"] = pin_new
+                    if tout:
+                        df_rec.at[idx, "จำนวนชั่วโมง"] = wh
+                        df_rec.at[idx, "สายนาที"] = lmin
+                        df_rec.at[idx, "สายชม"] = lhr
+                        df_rec.at[idx, "OT 1.5(ชม.)"] = ot15
+                        df_rec.at[idx, "OT 1(ชม.)"] = ot1
+                df_rec.to_csv(REC_FILE, index=False, encoding="utf-8")
+                st.success("บันทึกเวลาเข้าสำเร็จ ✅")
+                st.rerun()
         with col2:
             st.subheader("🕕 เช็คเอาท์เวลาออก")
             default_tout = datetime.strptime(tout, "%H:%M") if tout else datetime.strptime("17:00", "%H:%M")
