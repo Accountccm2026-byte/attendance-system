@@ -128,7 +128,7 @@ if menu == "จัดการรายชื่อพนักงาน":
                         st.rerun()
                         
 # ==========================================
-# 2. บันทึกการเข้างาน/ลา
+# 2. บันทึกการเข้างาน/ลา — แยกเช็คอิน/เช็คเอาท์ได้ ✅
 # ==========================================
 elif menu == "บันทึกการเข้างาน/ลา":
     st.header("บันทึกการเข้างาน/ลา")
@@ -149,54 +149,117 @@ elif menu == "บันทึกการเข้างาน/ลา":
 
     dt = st.date_input("วันที่", datetime.now())
     stt = st.selectbox("สถานะ", [
-        "มาปกติ", "ลาป่วย", "ลากิจ", "ลาพักร้อน", "ขาดงาน", "ทำงานล่วงเวลา"
+        "มาปกติ", "ลาป่วย", "ลากิจไม่รับเงิน", "WOP", "ขาดงาน", "ทำงานล่วงเวลา"
     ])
 
-    tin = tout = note = ""
-    pin = pout = ""
+    # === ค้นหารายการของวันนี้ (ถ้ามี) ===
+    df_rec = pd.read_csv(REC_FILE)
+    today_mask = (
+        (df_rec["รหัสพนักงาน"].astype(str) == str(eid)) &
+        (pd.to_datetime(df_rec["วันที่"], errors="coerce").dt.date == dt)
+    )
+    existing = df_rec.loc[today_mask]
 
+    tin = tout = pin = pout = note = ""
+    if not existing.empty:
+        rec = existing.iloc[0]
+        tin = str(rec["เวลาเข้า"]) if pd.notna(rec["เวลาเข้า"]) and rec["เวลาเข้า"] != "-" else ""
+        tout = str(rec["เวลาออก"]) if pd.notna(rec["เวลาออก"]) and rec["เวลาออก"] != "-" else ""
+        pin = str(rec["รูปเช็คอิน"]) if pd.notna(rec["รูปเช็คอิน"]) and rec["รูปเช็คอิน"] != "-" else ""
+        pout = str(rec["รูปเช็คเอาท์"]) if pd.notna(rec["รูปเช็คเอาท์"]) and rec["รูปเช็คเอาท์"] != "-" else ""
+        note = str(rec["หมายเหตุ"]) if pd.notna(rec["หมายเหตุ"]) and rec["หมายเหตุ"] != "-" else ""
+
+        st.info(f"📋 มีบันทึกของวันนี้แล้ว | เวลาเข้า: {tin or '—'} | เวลาออก: {tout or '—'}")
+
+    # === ถ้าเป็นวันทำงาน — แยกส่วนเช็คอิน / เช็คเอาท์ ===
     if stt in ["มาปกติ", "ทำงานล่วงเวลา"]:
-        a, b = st.columns(2)
-        with a:
-            tin = st.time_input("เวลาเข้า", datetime.strptime("08:00", "%H:%M")).strftime("%H:%M")
-        with b:
-            tout = st.time_input("เวลาออก", datetime.strptime("17:00", "%H:%M")).strftime("%H:%M")
-        
-        st.subheader("แนบรูปภาพ")
-        fin = st.file_uploader("รูปเช็คอิน", type=["jpg", "jpeg", "png"])
-        fout = st.file_uploader("รูปเช็คเอาท์", type=["jpg", "jpeg", "png"])
-        
-        if fin:
-            st.image(fin, width=200)
-            pin = f"data:image/jpeg;base64,{base64.b64encode(fin.read()).decode()}"
-        if fout:
-            st.image(fout, width=200)
-            pout = f"data:image/jpeg;base64,{base64.b64encode(fout.read()).decode()}"
-    else:
-        note = st.text_area("หมายเหตุ / เหตุผล")
+        col1, col2 = st.columns(2)
 
-    if st.button("บันทึกข้อมูล", type="primary"):
-        hrs = "-"
-        if tin and tout:
-            try:
-                t1 = datetime.strptime(tin, "%H:%M")
-                t2 = datetime.strptime(tout, "%H:%M")
-                hrs = f"{(t2 - t1).seconds / 3600:.1f}"
-            except:
-                pass
-        
-        df_rec = pd.read_csv(REC_FILE)
-        new_rec = pd.DataFrame([[
-            eid, enam, enick, epos, dt, stt, tin, tout, hrs, note or "-", pin, pout
-        ]], columns=[
-            "รหัสพนักงาน", "ชื่อพนักงาน", "ชื่อเล่น", "ตำแหน่ง",
-            "วันที่", "สถานะ", "เวลาเข้า", "เวลาออก",
-            "จำนวนชั่วโมง", "หมายเหตุ", "รูปเช็คอิน", "รูปเช็คเอาท์"
-        ])
-        df_rec = pd.concat([df_rec, new_rec], ignore_index=True)
-        df_rec.to_csv(REC_FILE, index=False)
-        st.success("บันทึกสำเร็จ ✅")
-        st.balloons()
+        with col1:
+            st.subheader("🕘 เช็คอินเวลาเข้า")
+            tin_new = st.time_input("เวลาเข้า", datetime.strptime(tin, "%H:%M") if tin else datetime.strptime("08:00", "%H:%M")).strftime("%H:%M")
+            st.write("แนบรูปเช็คอิน")
+            fin = st.file_uploader("อัปโหลดรูปเช็คอิน", type=["jpg", "jpeg", "png"], key="pin_upload")
+            if fin:
+                st.image(fin, width=150)
+                pin_new = f"data:image/jpeg;base64,{base64.b64encode(fin.read()).decode()}"
+            else:
+                pin_new = pin  # ใช้เดิมถ้าไม่อัปโหลดใหม่
+
+            if st.button("✅ บันทึกเวลาเข้า", type="primary"):
+                hrs = "-"
+                if tout:
+                    try:
+                        t1 = datetime.strptime(tin_new, "%H:%M")
+                        t2 = datetime.strptime(tout, "%H:%M")
+                        hrs = f"{(t2 - t1).seconds / 3600:.1f}"
+                    except: pass
+
+                if existing.empty:
+                    new_rec = pd.DataFrame([[
+                        eid, enam, enick, epos, dt, stt, tin_new, tout, hrs, "-", pin_new, pout
+                    ]], columns=df_rec.columns)
+                    df_rec = pd.concat([df_rec, new_rec], ignore_index=True)
+                else:
+                    idx = existing.index[0]
+                    df_rec.at[idx, "เวลาเข้า"] = tin_new
+                    df_rec.at[idx, "รูปเช็คอิน"] = pin_new
+                    if hrs != "-":
+                        df_rec.at[idx, "จำนวนชั่วโมง"] = hrs
+                df_rec.to_csv(REC_FILE, index=False)
+                st.success("บันทึกเวลาเข้าสำเร็จ ✅")
+                st.rerun()
+
+        with col2:
+            st.subheader("🕕 เช็คเอาท์เวลาออก")
+            tout_new = st.time_input("เวลาออก", datetime.strptime(tout, "%H:%M") if tout else datetime.strptime("17:00", "%H:%M")).strftime("%H:%M")
+            st.write("แนบรูปเช็คเอาท์")
+            fout = st.file_uploader("อัปโหลดรูปเช็คเอาท์", type=["jpg", "jpeg", "png"], key="pout_upload")
+            if fout:
+                st.image(fout, width=150)
+                pout_new = f"data:image/jpeg;base64,{base64.b64encode(fout.read()).decode()}"
+            else:
+                pout_new = pout  # ใช้เดิมถ้าไม่อัปโหลดใหม่
+
+            if st.button("✅ บันทึกเวลาออก", type="primary"):
+                hrs = "-"
+                if tin or tin_new:
+                    try:
+                        t1 = datetime.strptime(tin or tin_new, "%H:%M")
+                        t2 = datetime.strptime(tout_new, "%H:%M")
+                        hrs = f"{(t2 - t1).seconds / 3600:.1f}"
+                    except: pass
+
+                if existing.empty:
+                    new_rec = pd.DataFrame([[
+                        eid, enam, enick, epos, dt, stt, tin, tout_new, hrs, "-", pin, pout_new
+                    ]], columns=df_rec.columns)
+                    df_rec = pd.concat([df_rec, new_rec], ignore_index=True)
+                else:
+                    idx = existing.index[0]
+                    df_rec.at[idx, "เวลาออก"] = tout_new
+                    df_rec.at[idx, "รูปเช็คเอาท์"] = pout_new
+                    df_rec.at[idx, "จำนวนชั่วโมง"] = hrs
+                df_rec.to_csv(REC_FILE, index=False)
+                st.success("บันทึกเวลาออกสำเร็จ ✅")
+                st.rerun()
+
+    else:
+        # === กรณีลา/ขาดงาน — บันทึกครั้งเดียว ===
+        note = st.text_area("หมายเหตุ / เหตุผล", value=note)
+        if st.button("✅ บันทึกข้อมูล", type="primary"):
+            if existing.empty:
+                new_rec = pd.DataFrame([[
+                    eid, enam, enick, epos, dt, stt, "-", "-", "-", note, "-", "-"
+                ]], columns=df_rec.columns)
+                df_rec = pd.concat([df_rec, new_rec], ignore_index=True)
+            else:
+                idx = existing.index[0]
+                df_rec.at[idx, "สถานะ"] = stt
+                df_rec.at[idx, "หมายเหตุ"] = note
+            df_rec.to_csv(REC_FILE, index=False)
+            st.success("บันทึกสำเร็จ ✅")
+            st.rerun()
 
 # ==========================================
 # 3. หน้าสรุปภาพรวม
