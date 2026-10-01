@@ -43,7 +43,7 @@ def parse_time_str(s):
         return None
 
 # ==========================================
-# 1. จัดการรายชื่อพนักงาน — มีแก้ไข + ลบ ✅
+# 1. จัดการรายชื่อพนักงาน
 # ==========================================
 if menu == "จัดการรายชื่อพนักงาน":
     st.header("จัดการรายชื่อพนักงาน")
@@ -123,7 +123,7 @@ if menu == "จัดการรายชื่อพนักงาน":
                         del st.session_state[f"confirm_del_{idx}"]
 
 # ==========================================
-# 2. บันทึกการเข้างาน/ลา — แยกเช็คอิน/เช็คเอาท์ ✅
+# 2. บันทึกการเข้างาน/ลา — แยกเช็คอิน/เช็คเอาท์
 # ==========================================
 elif menu == "บันทึกการเข้างาน/ลา":
     st.header("บันทึกการเข้างาน/ลา")
@@ -198,10 +198,10 @@ elif menu == "บันทึกการเข้างาน/ลา":
             if st.button("✅ บันทึกเวลาเข้า", type="primary"):
                 lmin, lhr, ot15, ot1, wh = calc_times(tin_new, tout, dt)
                 if existing.empty:
-                   new_rec = pd.DataFrame([[
-    eid, enam, enick, epos, dt, stt, tin_new, tout,
-    wh if tout else "-", "-", pin_new, pout, lmin, lhr, ot15, ot1
-]], columns=df_rec.columns)
+                    new_rec = pd.DataFrame([[
+                        eid, enam, enick, epos, dt, stt, tin_new, tout,
+                        wh if tout else "-", "-", pin_new, pout, lmin, lhr, ot15, ot1
+                    ]], columns=df_rec.columns)
                     df_rec = pd.concat([df_rec, new_rec], ignore_index=True)
                 else:
                     idx = existing.index[0]
@@ -289,7 +289,7 @@ elif menu == "หน้าสรุปภาพรวม":
     st.dataframe(summary, use_container_width=True)
 
 # ==========================================
-# 4. รายงานรายชื่อ+วันทำงาน — มีรูปเช็คอิน/เช็คเอาท์ ✅
+# 4. รายงานรายชื่อ+วันทำงาน
 # ==========================================
 elif menu == "รายงานรายชื่อ+วันทำงาน":
     st.header("รายงานรายชื่อ+วันทำงาน")
@@ -350,7 +350,7 @@ elif menu == "รายงานรายชื่อ+วันทำงาน":
         st.download_button("📥 ดาวน์โหลดรายงาน Excel", f, out_file)
 
 # ==========================================
-# 5. หน้าสรุปส่ง HR — ตรงรูปแบบเป๊ะ ✅
+# 5. หน้าสรุปส่ง HR
 # ==========================================
 elif menu == "หน้าสรุปส่ง HR":
     st.header("หน้าสรุปส่ง HR")
@@ -416,10 +416,16 @@ elif menu == "📥 สำรองข้อมูล":
     up_emp = st.file_uploader("อัปโหลด: รายชื่อพนักงาน.csv", type="csv")
     up_rec = st.file_uploader("อัปโหลด: ข้อมูลบันทึกเวลา.csv", type="csv")
     if up_emp and st.button("✅ บันทึกรายชื่อพนักงาน"):
-        pd.read_csv(up_emp).to_csv(EMP_FILE, index=False)
+        try:
+            pd.read_csv(up_emp, encoding="utf-8").to_csv(EMP_FILE, index=False, encoding="utf-8")
+        except:
+            pd.read_csv(up_emp, encoding="cp874").to_csv(EMP_FILE, index=False, encoding="utf-8")
         st.success("กู้คืนรายชื่อสำเร็จ ✅")
         st.rerun()
     if up_rec and st.button("✅ บันทึกข้อมูลบันทึกเวลา"):
-        pd.read_csv(up_rec).to_csv(REC_FILE, index=False)
+        try:
+            pd.read_csv(up_rec, encoding="utf-8").to_csv(REC_FILE, index=False, encoding="utf-8")
+        except:
+            pd.read_csv(up_rec, encoding="cp874").to_csv(REC_FILE, index=False, encoding="utf-8")
         st.success("กู้คืนข้อมูลสำเร็จ ✅")
         st.rerun()
